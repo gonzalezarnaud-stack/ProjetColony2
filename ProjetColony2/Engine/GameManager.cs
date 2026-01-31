@@ -63,6 +63,7 @@
 using System.Collections.Generic;
 using Godot;
 using ProjetColony2.Core.Commands;
+using ProjetColony2.Core.Data;
 using ProjetColony2.Core.Entities;
 using ProjetColony2.Core.Systems;
 using ProjetColony2.Core.World;
@@ -102,6 +103,7 @@ public partial class GameManager : Node3D
     // "private" = seulement GameManager peut y accéder.
     private GameWorld _world;
     private Dictionary<(int, int, int), Chunk> _chunks;
+    private List<MaterialDefinition> _materials;
     private List<ChunkRenderer> _chunkRenderers;
 
     private int _gravity = MovementSystem.Gravity;
@@ -180,6 +182,7 @@ public partial class GameManager : Node3D
     //   Chaque étape dépend des précédentes.
     public override void _Ready()
     {
+        _materials = DataLoader.LoadMaterials("Data/materials.json");
         _world = new GameWorld();
 
         // ====================================================================
@@ -226,7 +229,7 @@ public partial class GameManager : Node3D
                 
                 // Créer le renderer
                 ChunkRenderer renderer = new ChunkRenderer();
-                renderer.Initialize(chunk);
+                renderer.Initialize(chunk, _materials);
                 
                 // Positionner le renderer dans le monde
                 renderer.Position = new Vector3(
@@ -277,9 +280,9 @@ public partial class GameManager : Node3D
         // EntityRenderer affiche un cube qui suit l'entité.
         // Pour l'instant c'est un simple cube blanc.
         // Plus tard : vrai modèle 3D, animations, etc.
-        _playerRenderer = new EntityRenderer();
-        _playerRenderer.Initialize(_playerEntity);
-        AddChild(_playerRenderer);
+        //_playerRenderer = new EntityRenderer();
+        //_playerRenderer.Initialize(_playerEntity);
+        //AddChild(_playerRenderer);
 
         // ====================================================================
         // CRÉATION DE LA CAMÉRA
@@ -360,6 +363,16 @@ public partial class GameManager : Node3D
 
             _world.SetVoxel(x, y, z, Voxel.Air);
             RebuildChunkAt(x, y, z);
+        }
+
+        // ====================================================================
+        // MINAGE — Progression et cassage du bloc
+        // ====================================================================
+        // MiningSystem gère la progression. Retourne true si le bloc est cassé.
+        if (MiningSystem.ApplyMining(_playerEntity, _world, _materials, out int minedX, out int minedY, out int minedZ))
+        {
+            _world.SetVoxel(minedX, minedY, minedZ, Voxel.Air);
+            RebuildChunkAt(minedX, minedY, minedZ);
         }
 
         // ====================================================================

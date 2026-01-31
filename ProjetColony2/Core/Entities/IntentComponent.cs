@@ -59,6 +59,8 @@ public class IntentComponent
     public bool WantsToPlace;
     public bool WantsToJump;
 
+    public bool IsMining;
+
     // ========================================================================
     // BLOC CIBLÉ — Coordonnées du bloc à miner ou à côté duquel poser
     // ========================================================================
@@ -91,6 +93,7 @@ public class IntentComponent
         WantsToMine = false;
         WantsToPlace = false;
         WantsToJump = false;
+        IsMining = false;
         TargetBlockX = 0;
         TargetBlockY = 0;
         TargetBlockZ = 0;

@@ -161,6 +161,9 @@ public class Entity
     // Pas de cerveau = pas de décisions = entité inutile.
     public BrainComponent Brain;
 
+    public int MiningSpeed = 1000; // 1000 = 100% vitesse normale
+    public int MiningProgress = 0; // Progression en millisecondes
+
     // ========================================================================
     // CONSTRUCTEUR — Crée une nouvelle entité
     // ========================================================================

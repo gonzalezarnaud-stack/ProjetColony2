@@ -79,7 +79,7 @@ using Godot;
 using ProjetColony2.Core.Entities;
 using ProjetColony2.Core.Commands;
 using ProjetColony2.Core.Systems;
-using  ProjetColony2.Core.World;
+using ProjetColony2.Core.World;
 using System;
 
 public partial class PlayerController : Node
@@ -132,6 +132,7 @@ public partial class PlayerController : Node
     //   On évite de spammer le buffer avec des "commandes immobiles".
     public override void _Process(double delta)
     {
+        InputHelper.Update();
         int moveX = 0;
         int moveZ = 0;
 
@@ -182,7 +183,7 @@ public partial class PlayerController : Node
         //
         // CLIC GAUCHE = casser le bloc visé
         // CLIC DROIT = poser un bloc à côté du bloc visé
-        if (Input.IsMouseButtonPressed(MouseButton.Left) || Input.IsMouseButtonPressed(MouseButton.Right))
+        if (InputHelper.IsMouseButtonPressed(MouseButton.Left) || InputHelper.IsMouseButtonJustPressed(MouseButton.Right))
         {
             // ================================================================
             // POSITION DES YEUX — D'où part le rayon
@@ -270,12 +271,12 @@ public partial class PlayerController : Node
             //   Le "1" est le MaterialId (pierre) — temporaire, futur : inventaire.
             if (found)
             {
-                if (Input.IsMouseButtonPressed(MouseButton.Left))
+                if (InputHelper.IsMouseButtonPressed(MouseButton.Left))
                 {
-                    _commandBuffer.Add(new MineCommand(_entity.Id, hitBlockX, hitBlockY, hitBlockZ));
+                    _commandBuffer.Add(new MiningCommand(_entity.Id, hitBlockX, hitBlockY, hitBlockZ));
                 }
 
-                if (Input.IsMouseButtonPressed(MouseButton.Right))
+                if (InputHelper.IsMouseButtonJustPressed(MouseButton.Right))
                 {
                     _commandBuffer.Add(new PlaceCommand(_entity.Id, previousX, previousY, previousZ, 1));
                 }

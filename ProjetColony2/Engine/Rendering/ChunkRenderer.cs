@@ -85,7 +85,9 @@
 //   - Il peut être ajouté à l'arbre de scène Godot
 // ============================================================================
 
+using System.Collections.Generic;
 using Godot;
+using ProjetColony2.Core.Data;
 using ProjetColony2.Core.World;
 
 namespace ProjetColony2.Engine.Rendering;
@@ -115,6 +117,8 @@ public partial class ChunkRenderer : Node3D
     // Un seul MeshInstance3D pour tout le chunk !
     private MeshInstance3D _meshInstance;
 
+    private List<MaterialDefinition> _materials;
+
     // ========================================================================
     // INITIALIZE — Configure le renderer avec un chunk
     // ========================================================================
@@ -134,9 +138,10 @@ public partial class ChunkRenderer : Node3D
     //   2. Crée un MeshInstance3D vide
     //   3. L'ajoute comme enfant (sinon invisible !)
     //   4. Appelle GenerateMesh() pour construire le mesh
-    public void Initialize(Chunk chunk)
+    public void Initialize(Chunk chunk, List<MaterialDefinition> materials)
     {
         _chunk = chunk;
+        _materials = materials;
 
         _meshInstance = new MeshInstance3D();
         AddChild(_meshInstance);
@@ -233,7 +238,7 @@ public partial class ChunkRenderer : Node3D
 
                         if (IsAirAt(nx, ny, nz))
                         {
-                            AddFace(st, position, face);
+                            AddFace(st, position, face, voxel);
                         }
                     }
                 }
@@ -253,8 +258,8 @@ public partial class ChunkRenderer : Node3D
         // AlbedoColor = la couleur de base de la surface.
         // Futur : couleur différente selon le matériau du voxel.
         var material = new StandardMaterial3D();
+        material.VertexColorUseAsAlbedo = true;
         material.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
-        material.AlbedoColor = new Color(0.6f, 0.6f, 0.6f);
         _meshInstance.MaterialOverride = material;
     }
 
@@ -360,21 +365,33 @@ public partial class ChunkRenderer : Node3D
     //   position + v[0] = (5, 1, 3)  ← Position FINALE du vertex
     //
     // C'est comme dire : "le cube est là-bas, donc ses coins aussi".
-    private void AddFace(SurfaceTool st, Vector3 position, CubeFace face)
+    private void AddFace(SurfaceTool st, Vector3 position, CubeFace face, Voxel voxel)
     {
         Vector3[] v = face.Vertices;
+        int[] rgba = _materials[voxel.MaterialId].Color;
+        Color color = new Color(rgba[0] / 255f, rgba[1] / 255f, rgba[2] / 255f, rgba[3] / 255f);
 
+        st.SetColor(color);
         st.SetNormal(face.Normal);
         st.AddVertex(position + v[0]);
+        
+        st.SetColor(color);
         st.SetNormal(face.Normal);
         st.AddVertex(position + v[1]);
+        
+        st.SetColor(color);
         st.SetNormal(face.Normal);
         st.AddVertex(position + v[2]);
 
+        st.SetColor(color);
         st.SetNormal(face.Normal);
         st.AddVertex(position + v[0]);
+        
+        st.SetColor(color);
         st.SetNormal(face.Normal);
         st.AddVertex(position + v[2]);
+        
+        st.SetColor(color);
         st.SetNormal(face.Normal);
         st.AddVertex(position + v[3]);
     }

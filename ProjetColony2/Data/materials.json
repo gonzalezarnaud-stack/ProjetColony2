@@ -1,0 +1,26 @@
+[
+  {
+    "Id": 0,
+    "Name": "Air",
+    "Color": [0, 0, 0, 0],
+    "Hardness": 0
+  },
+  {
+    "Id": 1,
+    "Name": "Stone",
+    "Color": [128, 128, 128, 255],
+    "Hardness": 1500
+  },
+  {
+    "Id": 2,
+    "Name": "Dirt", 
+    "Color": [139, 90, 43, 255],
+    "Hardness": 500
+  },
+  {
+    "Id": 3,
+    "Name": "Grass",
+    "Color": [34, 139, 34, 255],
+    "Hardness": 500
+  }
+]

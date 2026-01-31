@@ -141,7 +141,7 @@ public partial class EntityRenderer : Node3D
         //
         // Plus tard : charger un vrai modèle 3D avec ses propres textures.
         StandardMaterial3D material = new StandardMaterial3D();
-        material.AlbedoColor = new Color(1, 0, 0);  // Rouge
+        material.AlbedoColor = new Color(1, 0, 0);  // Transparent
         box.Material = material;
 
         MeshInstance3D meshInstance = new MeshInstance3D();
