@@ -16,6 +16,14 @@
 //   MaterialDefinition avec Id=1, Name="Stone", Color=[128,128,128,255]
 //
 // ============================================================================
+// PATTERN DATA-DRIVEN
+// ============================================================================
+// Les données sont SÉPARÉES du code :
+//   - Modifier une couleur = éditer le JSON, pas recompiler
+//   - Ajouter un matériau = une ligne dans le JSON
+//   - Support des mods = les joueurs créent leurs propres JSON
+//
+// ============================================================================
 // CLASSE VS STRUCT
 // ============================================================================
 // On utilise une CLASSE ici, pas une struct.
@@ -40,11 +48,21 @@
 // JsonSerializer EXIGE des propriétés (pas des champs simples).
 //
 // ============================================================================
+// POURQUOI INT[] POUR COLOR ET PAS BYTE[] ?
+// ============================================================================
+// System.Text.Json ne sait pas désérialiser un tableau JSON [128, 128, 128]
+// directement en byte[]. Il attend du Base64 pour les byte[].
+//
+// Avec int[], ça marche directement. La différence mémoire est négligeable
+// (4 octets vs 16 octets par matériau, on a ~50 matériaux max).
+//
+// ============================================================================
 // LIENS AVEC LES AUTRES FICHIERS
 // ============================================================================
 // - DataLoader.cs : charge le JSON et crée les MaterialDefinition
 // - Data/materials.json : la source des données
 // - ChunkRenderer.cs : utilise Color pour colorer les faces
+// - MiningSystem.cs : utilise Hardness pour le temps de minage
 // ============================================================================
 
 namespace ProjetColony2.Core.Data;
@@ -79,5 +97,17 @@ public class MaterialDefinition
     // Futur : remplacé par une texture (TexturePath).
     public int[] Color { get; set; }
 
+    // ========================================================================
+    // HARDNESS — Temps de base pour miner ce matériau (en millisecondes)
+    // ========================================================================
+    // Plus la valeur est haute, plus c'est long à casser.
+    //
+    // Exemples :
+    //   0 = Air (pas minable)
+    //   500 = Dirt/Grass (rapide)
+    //   1500 = Stone (plus lent)
+    //
+    // Formule : tempsRéel = Hardness * 1000 / entity.MiningSpeed
+    // Avec MiningSpeed = 1000 (100%), 1500ms de Hardness = 1.5 secondes.
     public int Hardness { get; set; } // En millisecondes
 }
