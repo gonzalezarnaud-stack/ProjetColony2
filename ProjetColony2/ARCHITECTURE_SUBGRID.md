@@ -17,9 +17,8 @@ ProjetColony utilise un système de voxels avec **formes paramétriques** pour l
 │ └── ShapeData (16 bits)                         │
 │     ├── BaseShape (4 bits) : 0-15 formes       │
 │     ├── Rotation (2 bits) : N/E/S/O            │
-│     ├── Flip (1 bit) : normal/inversé          │
-│     ├── StretchY (4 bits) : 1-16 blocs         │
-│     └── Coupe (5 bits) : 0-31 niveaux (×1/25)  │
+│     ├── Position (2 bits) : Debout/Couché/Inv  │
+│     └── Height (8 bits) : 0-255 (en 1/25 bloc) │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -56,25 +55,28 @@ ProjetColony utilise un système de voxels avec **formes paramétriques** pour l
 3 = Ouest (270°)
 ```
 
-**Flip (1 bit) :**
+**Position (2 bits) :**
 ```
-0 = Normal (haut en haut)
-1 = Inversé (haut en bas)
-```
-
-**StretchY (4 bits) :**
-```
-Valeur 0-15 = hauteur de 1 à 16 blocs
-Une pente stretch 2 = pente sur 2 blocs de haut
+0 = Debout (Y+ vers le haut)
+1 = Couché (Y+ vers le côté)
+2 = Inversé (Y+ vers le bas)
+3 = Réservé
 ```
 
-**Coupe (5 bits) :**
+**Height (8 bits) :**
 ```
-Valeur 0-31 = niveau de coupe (×1/25 du bloc)
-0 = pas de coupe (bloc entier)
-5 = coupé à 5/25 = 1/5 de la hauteur
-20 = coupé à 20/25 = 4/5 de la hauteur
+Hauteur en 1/25 de bloc (= 4cm de précision)
+Valeur 25 = 1 bloc standard
+Valeur 35 = 1 bloc + 2/5 (pente douce)
+Valeur 50 = 2 blocs
+Max 255 = ~10 blocs
 ```
+
+Exemples :
+- Pente 1 bloc : Height = 25
+- Pente 1.4 bloc : Height = 35
+- Pente 2 blocs : Height = 50
+- Bloc partiel 3/5 : Height = 15
 
 ---
 
@@ -178,21 +180,25 @@ Le GPU transforme les 5-6 meshes de base selon ShapeData.
 // Vertex shader
 uniform int baseShape;
 uniform int rotation;      // 0-3
-uniform bool flip;
-uniform float stretchY;    // 1.0 - 16.0
-uniform float coupe;       // 0.0 - 1.0
+uniform int position;      // 0=debout, 1=couché, 2=inversé
+uniform float height;      // En blocs (ex: 1.4)
 
 vec3 transformVertex(vec3 v) {
-    // 1. Stretch vertical
-    v.y *= stretchY;
+    // 1. Hauteur (scale Y)
+    v.y *= height;
     
-    // 2. Coupe (discard si au-dessus)
-    // Géré dans fragment shader
+    // 2. Position
+    if (position == 1) {
+        // Couché : rotation 90° sur X
+        float tmp = v.y;
+        v.y = -v.z;
+        v.z = tmp;
+    } else if (position == 2) {
+        // Inversé : flip vertical
+        v.y = height - v.y;
+    }
     
-    // 3. Flip
-    if (flip) v.y = stretchY - v.y;
-    
-    // 4. Rotation Y
+    // 3. Rotation Y
     float angle = rotation * 1.5708; // π/2
     mat2 rot = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
     v.xz = rot * v.xz;
@@ -229,13 +235,44 @@ vec3 transformVertex(vec3 v) {
 
 ### 6.3 Orientations
 
-Cycle unique à travers toutes les orientations valides de l'objet :
+**Deux axes indépendants :**
 
+| Input | Action |
+|-------|--------|
+| D-pad ↑/↓ | Cycle position (Debout → Couché → Inversé) |
+| D-pad ←/→ | Rotation horizontale (N → E → S → O) |
+
+**Positions (3) :**
 ```
-Debout → Couché N → Couché E → Couché S → Couché O → Inversé → ...
+Debout   = Y+ vers le haut (normal)
+Couché   = Y+ vers le côté (objet sur le flanc)
+Inversé  = Y+ vers le bas (à l'envers)
 ```
 
-Chaque objet définit ses orientations autorisées.
+**Rotations (4) :**
+```
+Nord (0°) → Est (90°) → Sud (180°) → Ouest (270°)
+```
+
+**Total : 3 × 4 = 12 orientations max**
+
+Chaque objet définit ses positions autorisées :
+
+```json
+{
+  "Id": "mug",
+  "AllowedPositions": ["debout", "couché", "inversé"]
+}
+```
+
+```json
+{
+  "Id": "charrette", 
+  "AllowedPositions": ["debout"]
+}
+```
+
+Si une seule position autorisée → D-pad ↑/↓ ne fait rien.
 
 ---
 
@@ -266,10 +303,19 @@ Icônes distinctes à terme.
 
 ## 8. Génération procédurale
 
-### 8.1 Terrain
+### 8.1 Vue d'ensemble — Catégories
+
+| Catégorie | Méthode | Stockage |
+|-----------|---------|----------|
+| Terrain | Noise (Simplex) | Voxel ShapeData |
+| Végétation grande | L-System / procédural | Entités |
+| Végétation petite | Placement simple | Billboards |
+| Minéraux | Noise + scatter | Prefabs |
+| Structures | Grammaire + règles | Voxels + Objets |
+
+### 8.2 Terrain
 
 ```csharp
-// Génération colline
 for each voxel in region:
     float height = noise(x, z);
     
@@ -284,14 +330,106 @@ for each voxel in region:
 CalculateSlope analyse les voisins pour déterminer :
 - BaseShape (pente, angle...)
 - Rotation
-- StretchY si pente douce sur plusieurs blocs
+- Height si pente douce sur plusieurs blocs
 
-### 8.2 Entités
+### 8.3 Végétation grande (Arbres)
 
 ```csharp
-// Placement arbres
+// L-System ou algo dédié
+// Chaque arbre = entité (abattable d'un coup)
 foreach spawn in treeSpawns:
-    PlaceEntity("oak_tree", spawn.position, RandomOrientation());
+    Tree tree = GenerateTree(biome, Random.seed);
+    PlaceEntity(tree, spawn.position, RandomRotation());
+```
+
+Formes utilisées : Tronc (cylindre), Branches, Feuillage (blob)
+
+### 8.4 Végétation petite (Plantes, buissons)
+
+```csharp
+// Style Minecraft : 2 quads croisés en X
+// Pas de vraie 3D, juste une image (billboard)
+foreach spawn in plantSpawns:
+    PlaceBillboard("grass_tuft", spawn.position);
+```
+
+Léger, simple, efficace.
+
+### 8.5 Minéraux (Rochers)
+
+```csharp
+// Prefabs avec variations (taille, rotation)
+foreach spawn in rockSpawns:
+    string prefab = PickRandom("boulder_small", "boulder_medium", "boulder_large");
+    float scale = Random.Range(0.8f, 1.2f);
+    PlacePrefab(prefab, spawn.position, RandomRotation(), scale);
+```
+
+### 8.6 Structures (Bâtiments)
+
+**Grammaire de bâtiment :**
+```
+Bâtiment = Fondation + Murs + Toit + Intérieur
+```
+
+**Génération des murs :**
+```csharp
+void GenerateWall(int x, int z, int height, Direction facing)
+{
+    for (int y = 0; y < height; y++)
+    {
+        PlaceVoxel(x, y, z, Material.Stone, Shape.Cube);
+    }
+    
+    // Fenêtre ?
+    if (Random.Chance(30%) && height > 2)
+    {
+        PlaceVoxel(x, 2, z, Material.Air);
+        PlaceObject(x, 2, z, "window_frame", facing);
+    }
+}
+```
+
+**Ameublement :**
+```csharp
+void FurnishRoom(Room room, RoomType type)
+{
+    if (type == RoomType.Bedroom)
+    {
+        PlaceObject(room.Corner, "bed", facing: room.Wall);
+        PlaceObject(room.OtherCorner, "chest");
+        if (room.Size > 16) 
+            PlaceObject(room.Center, "table_small");
+    }
+    else if (type == RoomType.Kitchen)
+    {
+        PlaceObject(room.Wall, "hearth");
+        PlaceObject(room.Center, "table_large");
+        PlaceObjects(room.Around("table"), "chair", count: 2-4);
+    }
+}
+```
+
+**Avantages :**
+- Utilise exactement le même système que le joueur
+- Murs = Voxels ShapeData
+- Meubles = Objets prefabs 25×25×25
+- Le joueur peut modifier, réparer, agrandir tout bâtiment généré
+
+**Variations par culture/richesse :**
+```
+Maison paysanne :
+┌─────────┐
+│ ▢     ▢ │  ← Fenêtres simples
+│    ░    │  ← Porte simple
+└─────────┘
+
+Maison riche :
+┌─────────────┐
+│ ▢    ◊    ▢ │  ← Fenêtre ornée
+│ ▢         ▢ │
+│      ░░     │  ← Double porte
+└─────────────┘
 ```
 
 ---
@@ -332,8 +470,8 @@ Vs approach naïve (dense 25×25×25) : **128 Mo** par chunk.
 4. Créer shader basique (rotation seulement)
 
 ### Phase 2 : Transformations complètes
-5. Ajouter stretch/coupe au shader
-6. Ajouter flip
+5. Ajouter height au shader
+6. Ajouter position (debout/couché/inversé)
 7. Tester génération terrain avec pentes
 
 ### Phase 3 : Sous-grille sparse
@@ -349,4 +487,4 @@ Vs approach naïve (dense 25×25×25) : **128 Mo** par chunk.
 
 ---
 
-*Document créé le 31/01/2026 — *ProjetColony MVP-B
+*Document créé le 31/01/2026 — ProjetColony MVP-B*
