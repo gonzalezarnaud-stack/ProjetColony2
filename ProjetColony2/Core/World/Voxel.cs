@@ -90,6 +90,26 @@ public struct Voxel
     public byte MaterialId;
 
     // ========================================================================
+    // CHAMP — Forme et orientation du voxel (encodé sur 16 bits)
+    // ========================================================================
+    // Ce champ contient 4 informations compactées :
+    //   - BaseShape (4 bits) : cube, pente, angle... (voir ShapeData.cs)
+    //   - Rotation (2 bits) : Nord/Est/Sud/Ouest
+    //   - Position (2 bits) : Debout/Couché/Inversé
+    //   - Height (8 bits) : hauteur en 1/25 de bloc (25 = 1 bloc)
+    //
+    // Pourquoi tout mettre dans un seul ushort ?
+    //   - Économie mémoire : 2 bytes au lieu de 4 champs séparés
+    //   - Millions de voxels = chaque byte compte !
+    //
+    // Pour lire/écrire ces valeurs, utilise la struct ShapeData :
+    //   var data = new ShapeData(shape, rotation, position, height);
+    //   voxel.Shape = data.Value;
+    //
+    // "ushort" = entier non-signé de 0 à 65535 (16 bits)
+    public ushort Shape;
+
+    // ========================================================================
     // PROPRIÉTÉ CALCULÉE — Un raccourci pratique
     // ========================================================================
     // "=>" c'est la syntaxe courte pour une propriété en lecture seule.
@@ -125,19 +145,31 @@ public struct Voxel
     // Au lieu d'écrire partout : new Voxel(0)
     // On écrit simplement : Voxel.Air
     // C'est plus lisible et on ne crée pas d'objet à chaque fois.
-    public static readonly Voxel Air = new Voxel(0);
+    public static readonly Voxel Air = new Voxel(0, 0);
 
     // ========================================================================
     // CONSTRUCTEUR — Crée un nouveau Voxel
     // ========================================================================
-    // Appelé quand on écrit : new Voxel(1)  // Crée un voxel de pierre
+    // PARAMÈTRES :
+    //   materialId : type de terrain (0=air, 1=pierre, 2=terre...)
+    //   shape : forme encodée (par défaut = cube plein de 1 bloc)
+    //
+    // VALEUR PAR DÉFAUT :
+    //   ShapeData.FULL_CUBE = un cube plein standard
+    //   Ainsi, new Voxel(1) crée un bloc de pierre cubique.
+    //
+    // EXEMPLES :
+    //   new Voxel(1)                        → Pierre, cube plein
+    //   new Voxel(2, ShapeData.FULL_CUBE)   → Terre, cube plein
+    //   new Voxel(1, myCustomShape.Value)   → Pierre, forme custom
     //
     // Le paramètre "materialId" (minuscule) est copié dans le champ 
     // "MaterialId" (majuscule). C'est une convention C# pour distinguer
     // les paramètres des champs.
-    public Voxel(byte materialId)
+    public Voxel(byte materialId, ushort shape = ShapeData.FULL_CUBE)
     {
         MaterialId = materialId;
+        Shape = shape;
     }
 
     // ========================================================================

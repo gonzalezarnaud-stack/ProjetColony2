@@ -104,12 +104,25 @@ public static class WorldGenerator
                     // Position mondiale en Y
                     int worldY = chunkY * Chunk.Size + y;
                     
-                    if (worldY <= height)
+                    if (worldY > height)
                     {
-                        // Sous ou au niveau du sol = pierre
+                        chunk.SetVoxel(x, y, z, Voxel.Air);
+                    }
+
+                    else if (worldY == height)
+                    {
+                        chunk.SetVoxel(x, y, z, new Voxel(3));
+                    }
+
+                    else if (worldY >= height -2)
+                    {
+                        chunk.SetVoxel(x, y, z, new Voxel(2));
+                    }
+
+                    else
+                    {
                         chunk.SetVoxel(x, y, z, new Voxel(1));
                     }
-                    // Sinon = air (déjà le défaut, on ne fait rien)
                 }
             }
         }

@@ -293,6 +293,25 @@ public partial class GameManager : Node3D
         _playerCamera = new PlayerCamera();
         _playerCamera.Initialize(_playerEntity);
         AddChild(_playerCamera);
+    
+        // ====================================================================
+        // LUMIÈRE — Soleil directionnel
+        // ====================================================================
+        var sun = new DirectionalLight3D();
+        sun.RotationDegrees = new Vector3(-45, -45, 0);
+        sun.ShadowEnabled = false;
+        AddChild(sun);
+
+        // ====================================================================
+        // ENVIRONNEMENT — Ciel procédural
+        // ====================================================================
+        var worldEnv = new WorldEnvironment();
+        var environment = new Godot.Environment();
+        environment.BackgroundMode = Godot.Environment.BGMode.Sky;
+        environment.Sky = new Sky();
+        environment.Sky.SkyMaterial = new ProceduralSkyMaterial();
+        worldEnv.Environment = environment;
+        AddChild(worldEnv);
     }
 
     // ========================================================================

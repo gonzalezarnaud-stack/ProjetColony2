@@ -260,6 +260,7 @@ public partial class ChunkRenderer : Node3D
         var material = new StandardMaterial3D();
         material.VertexColorUseAsAlbedo = true;
         material.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+        material.ShadowToOpacity = false;
         _meshInstance.MaterialOverride = material;
     }
 

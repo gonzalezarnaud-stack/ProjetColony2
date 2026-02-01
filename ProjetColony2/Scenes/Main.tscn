@@ -4,8 +4,3 @@
 
 [node name="Node3D" type="Node3D"]
 script = ExtResource("1_r150o")
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.70710677, 0.49999997, -0.49999997, 0, 0.70710677, 0.70710677, 0.70710677, -0.49999997, 0.49999997, 0, 0, 0)
-light_color = Color(0.9999983, 0.90805733, 0.6346713, 1)
-light_energy = 0.5
