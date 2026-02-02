@@ -368,34 +368,75 @@ public partial class ChunkRenderer : Node3D
     // C'est comme dire : "le cube est là-bas, donc ses coins aussi".
     private void AddFace(SurfaceTool st, Vector3 position, CubeFace face, Voxel voxel)
     {
+        // ================================================================
+        // EXTRAIRE LA HAUTEUR DU SHAPEDATA
+        // ================================================================
+        // voxel.Shape contient les données de forme encodées sur 16 bits.
+        // Les 8 bits de poids fort (bits 8-15) contiennent Height.
+        // ">> 8" décale de 8 bits vers la droite pour récupérer Height.
+        // On divise par 25 car Height=25 = 1 bloc complet.
+        //
+        // EXEMPLES :
+        //   Shape = 6401 → Height = 6401 >> 8 = 25 → 25/25 = 1.0 (bloc plein)
+        //   Shape = 3073 → Height = 3073 >> 8 = 12 → 12/25 = 0.48 (demi-bloc)
+        byte heightRaw = (byte)(voxel.Shape >> 8);
+        float height = heightRaw / 25f;
+
         Vector3[] v = face.Vertices;
         int[] rgba = _materials[voxel.MaterialId].Color;
         Color color = new Color(rgba[0] / 255f, rgba[1] / 255f, rgba[2] / 255f, rgba[3] / 255f);
 
         st.SetColor(color);
         st.SetNormal(face.Normal);
-        st.AddVertex(position + v[0]);
+        st.AddVertex(position + AdjustHeight(v[0], height));
         
         st.SetColor(color);
         st.SetNormal(face.Normal);
-        st.AddVertex(position + v[1]);
+        st.AddVertex(position + AdjustHeight(v[1], height));
         
         st.SetColor(color);
         st.SetNormal(face.Normal);
-        st.AddVertex(position + v[2]);
+        st.AddVertex(position + AdjustHeight(v[2], height));
 
         st.SetColor(color);
         st.SetNormal(face.Normal);
-        st.AddVertex(position + v[0]);
+        st.AddVertex(position + AdjustHeight(v[0], height));
         
         st.SetColor(color);
         st.SetNormal(face.Normal);
-        st.AddVertex(position + v[2]);
+        st.AddVertex(position + AdjustHeight(v[2], height));
         
         st.SetColor(color);
         st.SetNormal(face.Normal);
-        st.AddVertex(position + v[3]);
+        st.AddVertex(position + AdjustHeight(v[3], height));
     }
+
+    // ========================================================================
+    // ADJUSTHEIGHT — Ajuste un vertex selon la hauteur du voxel
+    // ========================================================================
+    // Le terrain peut avoir des blocs de différentes hauteurs (dalles, etc.)
+    // Cette méthode modifie les vertices du "haut" (Y=1) pour les ramener
+    // à la vraie hauteur du bloc.
+    //
+    // PARAMÈTRES :
+    //   vertex : un sommet du cube (position locale 0-1)
+    //   height : hauteur réelle du bloc (0.0 à 1.0, où 1.0 = bloc plein)
+    //
+    // LOGIQUE :
+    //   Si le vertex est en haut (Y > 0.5) → on le ramène à height
+    //   Si le vertex est en bas (Y <= 0.5) → on ne touche pas
+    //
+    // EXEMPLE :
+    //   Bloc plein (height=1.0) : vertex (0,1,0) reste (0,1,0)
+    //   Demi-bloc (height=0.5) : vertex (0,1,0) devient (0,0.5,0)
+    private Vector3 AdjustHeight(Vector3 vertex, float height)
+        {
+            if (vertex.Y > 0.5f)
+            {
+                return new Vector3(vertex.X, height, vertex.Z);
+            }
+            return vertex;
+        }
 
     // ========================================================================
     // REBUILD — Reconstruit le mesh après modification du chunk
